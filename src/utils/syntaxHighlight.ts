@@ -28,7 +28,9 @@ function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function highlightJson(code: string): string {
@@ -148,24 +150,22 @@ function highlightXml(code: string): string {
   }
 
   const result = escaped.replace(
-    /(&lt;\/?)([\w:-]+)((?:\s+[\w:-]+=(?:&quot;[^&]*?&quot;|&#39;[^&]*?&#39;))?\s*\/?&gt;)/g,
+    /(&lt;\/?)([\w:-]+)((?:\s+[\w:-]+=(?:&quot;[^&]*?&quot;|&#39;[^&]*?&#39;))*\s*\/?&gt;)/g,
     (_match, open, tagName, rest) => {
       const color = getTagColor(tagName);
       const isClose = open.includes('/');
       const cls = isClose ? 'tok-tag-close' : 'tok-tag-open';
-      const tagPart = `<span class="tok-xml-tag ${cls}" style="color:${color};font-weight:600" data-tag="${tagName}">${open}<span class="tok-xml-tagname">${tagName}</span></span>`;
+      const tagPart = `<span class="tok-xml-tag ${cls}" style="color:${color};font-weight:600" data-tag="${tagName}">${open}<span class="tok-tagname" data-tag="${tagName}">${tagName}</span></span>`;
 
-      const restHighlighted = rest.replace(
-        /([\w:-]+)(=)(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;)/g,
-        (_m: string, attr: string, eq: string, val: string) => {
-          return `<span class="tok-attr">${attr}</span>${eq}<span class="tok-str">${val}</span>`;
-        }
-      );
+      const attrRegex = /([\w:-]+)(=)(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;)/g;
+      const restHighlighted = rest.replace(attrRegex, (_m: string, attr: string, eq: string, val: string) => {
+        return `<span class="tok-attr">${attr}</span>${eq}<span class="tok-str">${val}</span>`;
+      });
 
       const closingBracket = restHighlighted.match(/(\/?&gt;)$/);
       const attrPart = restHighlighted.replace(/(\/?&gt;)$/, '');
       const bracketPart = closingBracket
-        ? `<span class="tok-xml-tag ${cls}" style="color:${color};font-weight:600" data-tag="${tagName}">${closingBracket[1]}</span>`
+        ? `<span class="tok-xml-bracket" style="color:${color};font-weight:600">${closingBracket[1]}</span>`
         : '';
 
       return tagPart + attrPart + bracketPart;

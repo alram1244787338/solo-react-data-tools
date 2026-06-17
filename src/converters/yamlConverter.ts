@@ -261,6 +261,19 @@ export function detectYaml(data: string): boolean {
   const trimmed = data.trim();
   if (!trimmed) return false;
   if (trimmed.startsWith('---')) return true;
+  if (trimmed.startsWith('<')) return false;
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) return false;
+  if (trimmed.includes(',') && !trimmed.includes('\n')) return false;
+
   const firstLine = trimmed.split('\n')[0];
-  return /^[\w-]+\s*:/.test(firstLine) && !firstLine.includes('<') && !firstLine.startsWith('{') && !firstLine.startsWith('[');
+  if (/^[\w-]+\s*:/.test(firstLine)) return true;
+  if (/^-\s/.test(firstLine)) return true;
+
+  try {
+    JSON.parse(trimmed);
+    return false;
+  } catch {}
+
+  const validYamlPattern = /(:\s|^\s*-\s|:\s*$)/m;
+  return validYamlPattern.test(trimmed);
 }
