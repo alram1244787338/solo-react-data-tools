@@ -54,7 +54,15 @@ export function tableToJson(table: TableData): string {
 
 export function detectJson(data: string): boolean {
   const trimmed = data.trim();
-  return trimmed.startsWith('{') || trimmed.startsWith('[');
+  if (!trimmed) return false;
+  if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) return false;
+
+  try {
+    JSON.parse(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function formatJson(jsonStr: string): ConversionResult {

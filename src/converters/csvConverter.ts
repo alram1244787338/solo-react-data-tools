@@ -23,12 +23,6 @@ export function csvToJson(csv: string): ConversionResult {
 }
 
 function tryParseValue(val: string): unknown {
-  if (val === '') return '';
-  if (val === 'true') return true;
-  if (val === 'false') return false;
-  if (val === 'null') return null;
-  const num = Number(val);
-  if (!isNaN(num) && val.trim() !== '') return num;
   return val;
 }
 
@@ -204,12 +198,21 @@ function parseCsvLines(csv: string): string[][] {
 export function detectCsv(data: string): boolean {
   const trimmed = data.trim();
   if (!trimmed) return false;
-  const firstLine = trimmed.split('\n')[0];
-  return (
-    firstLine.includes(',') &&
-    !trimmed.startsWith('{') &&
-    !trimmed.startsWith('[') &&
-    !trimmed.startsWith('<') &&
-    !/^[\w-]+:/.test(trimmed)
-  );
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) return false;
+  if (trimmed.startsWith('<')) return false;
+  if (/^[\w-]+\s*:/.test(trimmed.split('\n')[0])) return false;
+
+  const lines = parseCsvLines(trimmed);
+  if (lines.length < 2) return false;
+
+  const firstLineLen = lines[0].length;
+  if (firstLineLen < 2) return false;
+
+  for (let i = 1; i < Math.min(lines.length, 10); i++) {
+    if (lines[i].length !== firstLineLen) {
+      return false;
+    }
+  }
+
+  return true;
 }
