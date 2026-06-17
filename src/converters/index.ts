@@ -4,20 +4,34 @@ import { detectJson, formatJson } from './jsonConverter';
 import { xmlToJson, jsonToXml, detectXml, formatXml } from './xmlConverter';
 import { yamlToJson, jsonToYaml, detectYaml } from './yamlConverter';
 
-export function convertData(input: string, sourceFormat: DataFormat, targetFormat: DataFormat): ConversionResult {
+export function convertData(
+  input: string,
+  sourceFormat: DataFormat,
+  targetFormat: DataFormat
+): ConversionResult {
   if (sourceFormat === targetFormat) {
-    if (sourceFormat === 'json') return formatJson(input);
-    if (sourceFormat === 'xml') return formatXml(input);
-    return { success: true, data: input };
+    switch (sourceFormat) {
+      case 'json':
+        return formatJson(input);
+      case 'xml':
+        return formatXml(input);
+      case 'csv':
+        return { success: true, data: input };
+      case 'yaml':
+        return { success: true, data: input };
+    }
   }
 
   let jsonData: string | undefined;
 
   try {
     switch (sourceFormat) {
-      case 'json':
-        jsonData = input;
+      case 'json': {
+        const validateResult = formatJson(input);
+        if (!validateResult.success) return validateResult;
+        jsonData = validateResult.data;
         break;
+      }
       case 'csv': {
         const result = csvToJson(input);
         if (!result.success) return result;
@@ -39,7 +53,7 @@ export function convertData(input: string, sourceFormat: DataFormat, targetForma
     }
 
     if (!jsonData) {
-      return { success: false, error: '转换失败' };
+      return { success: false, error: '源格式解析失败' };
     }
 
     switch (targetFormat) {

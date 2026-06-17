@@ -9,9 +9,10 @@ export function csvToJson(csv: string): ConversionResult {
     const headers = lines[0];
     const rows = lines.slice(1);
     const result = rows.map((row) => {
-      const obj: Record<string, string> = {};
+      const obj: Record<string, unknown> = {};
       headers.forEach((header, index) => {
-        obj[header] = row[index] || '';
+        const raw = row[index] || '';
+        obj[header] = tryParseValue(raw);
       });
       return obj;
     });
@@ -21,27 +22,34 @@ export function csvToJson(csv: string): ConversionResult {
   }
 }
 
+function tryParseValue(val: string): unknown {
+  if (val === '') return '';
+  if (val === 'true') return true;
+  if (val === 'false') return false;
+  if (val === 'null') return null;
+  const num = Number(val);
+  if (!isNaN(num) && val.trim() !== '') return num;
+  return val;
+}
+
 export function jsonToCsv(jsonStr: string): ConversionResult {
   try {
-    const data = JSON.parse(jsonStr) as JsonData;
-    let rows: Record<string, unknown>[] = [];
-
-    if (Array.isArray(data)) {
-      rows = data as Record<string, unknown>[];
-    } else if (typeof data === 'object' && data !== null) {
-      rows = [data as Record<string, unknown>];
-    } else {
-      return { success: false, error: 'JSON 数据必须是数组或对象' };
+    const data = JSON.parse(jsonStr);
+    const rows = normalizeToRows(data);
+    if (!rows) {
+      return { success: false, error: 'JSON 数据无法转换为表格格式（需要数组或可展平的对象）' };
     }
-
     if (rows.length === 0) {
       return { success: true, data: '' };
     }
 
-    const headers = Object.keys(rows[0]);
-    const csvLines = [headers.join(',')];
+    const flatRows = rows.map((row) => flattenObject(row));
+    const headerSet = new Set<string>();
+    flatRows.forEach((row) => Object.keys(row).forEach((k) => headerSet.add(k)));
+    const headers = Array.from(headerSet);
 
-    rows.forEach((row) => {
+    const csvLines = [headers.join(',')];
+    flatRows.forEach((row) => {
       const line = headers.map((header) => {
         const value = String(row[header] ?? '');
         if (value.includes(',') || value.includes('"') || value.includes('\n')) {
@@ -54,8 +62,69 @@ export function jsonToCsv(jsonStr: string): ConversionResult {
 
     return { success: true, data: csvLines.join('\n') };
   } catch (e) {
-    return { success: false, error: `JSON 解析失败: ${(e as Error).message}` };
+    return { success: false, error: `JSON 转 CSV 失败: ${(e as Error).message}` };
   }
+}
+
+function normalizeToRows(data: unknown): Record<string, unknown>[] | null {
+  if (Array.isArray(data)) {
+    if (data.length === 0) return [];
+    return data.map((item) => {
+      if (typeof item === 'object' && item !== null) {
+        return cleanSpecialKeys(item as Record<string, unknown>);
+      }
+      return { value: item };
+    });
+  }
+  if (typeof data === 'object' && data !== null) {
+    const obj = data as Record<string, unknown>;
+    const allValuesAreObjects = Object.values(obj).every(
+      (v) => typeof v === 'object' && v !== null && !Array.isArray(v)
+    );
+    if (allValuesAreObjects && Object.keys(obj).length > 0) {
+      return Object.entries(obj).map(([key, value]) => ({
+        _key: key,
+        ...cleanSpecialKeys(value as Record<string, unknown>),
+      }));
+    }
+    return [cleanSpecialKeys(obj)];
+  }
+  return null;
+}
+
+function cleanSpecialKeys(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (key === '@attributes') {
+      if (typeof value === 'object' && value !== null) {
+        Object.entries(value as Record<string, unknown>).forEach(([ak, av]) => {
+          result[`@${ak}`] = av;
+        });
+      }
+    } else if (key === '#text') {
+      result['text'] = value;
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+function flattenObject(obj: Record<string, unknown>, prefix = ''): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    if (value === null || value === undefined) {
+      result[fullKey] = '';
+    } else if (typeof value === 'object' && !Array.isArray(value)) {
+      Object.assign(result, flattenObject(value as Record<string, unknown>, fullKey));
+    } else if (Array.isArray(value)) {
+      result[fullKey] = JSON.stringify(value);
+    } else {
+      result[fullKey] = String(value);
+    }
+  }
+  return result;
 }
 
 export function csvToTable(csv: string): TableData {
@@ -136,5 +205,11 @@ export function detectCsv(data: string): boolean {
   const trimmed = data.trim();
   if (!trimmed) return false;
   const firstLine = trimmed.split('\n')[0];
-  return firstLine.includes(',') && !trimmed.startsWith('{') && !trimmed.startsWith('[') && !trimmed.startsWith('<') && !/^[\w-]+:/.test(trimmed);
+  return (
+    firstLine.includes(',') &&
+    !trimmed.startsWith('{') &&
+    !trimmed.startsWith('[') &&
+    !trimmed.startsWith('<') &&
+    !/^[\w-]+:/.test(trimmed)
+  );
 }

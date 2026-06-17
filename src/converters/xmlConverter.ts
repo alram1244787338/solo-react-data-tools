@@ -60,15 +60,28 @@ function xmlNodeToJson(node: Element): JsonData {
 
 export function jsonToXml(jsonStr: string): ConversionResult {
   try {
-    const data = JSON.parse(jsonStr) as JsonData;
-    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + jsonToXmlNode(data, 'root');
+    const data = JSON.parse(jsonStr);
+    let xmlBody: string;
+
+    if (Array.isArray(data)) {
+      xmlBody = data
+        .map((item, index) => jsonToXmlNode(item, `item${index + 1}`, 1))
+        .join('\n');
+      xmlBody = `  <items>\n${xmlBody}\n  </items>`;
+    } else if (typeof data === 'object' && data !== null) {
+      xmlBody = jsonToXmlNode(data, 'root', 1);
+    } else {
+      return { success: false, error: 'JSON 数据必须是数组或对象才能转换为 XML' };
+    }
+
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + xmlBody;
     return { success: true, data: xml };
   } catch (e) {
-    return { success: false, error: `JSON 解析失败: ${(e as Error).message}` };
+    return { success: false, error: `JSON 转 XML 失败: ${(e as Error).message}` };
   }
 }
 
-function jsonToXmlNode(data: unknown, tagName: string, indent = 0): string {
+function jsonToXmlNode(data: unknown, tagName: string, indent: number): string {
   const pad = '  '.repeat(indent);
 
   if (data === null || data === undefined) {
@@ -77,7 +90,9 @@ function jsonToXmlNode(data: unknown, tagName: string, indent = 0): string {
 
   if (typeof data === 'object') {
     if (Array.isArray(data)) {
-      return data.map((item) => jsonToXmlNode(item, tagName, indent)).join('\n');
+      return data
+        .map((item, index) => jsonToXmlNode(item, tagName, indent))
+        .join('\n');
     }
 
     const obj = data as Record<string, unknown>;
@@ -108,7 +123,10 @@ function jsonToXmlNode(data: unknown, tagName: string, indent = 0): string {
 
     const opening = `${pad}<${tagName}${attrs}>`;
     const closing = `${pad}</${tagName}>`;
-    const content = children.length > 0 ? '\n' + children.join('\n') + '\n' + pad : escapeXml(textContent);
+    const content =
+      children.length > 0
+        ? '\n' + children.join('\n') + '\n' + pad
+        : escapeXml(textContent);
     return opening + content + closing;
   }
 
@@ -126,7 +144,10 @@ function escapeXml(text: string): string {
 
 export function detectXml(data: string): boolean {
   const trimmed = data.trim();
-  return trimmed.startsWith('<') && (trimmed.startsWith('<?xml') || /^<\w/.test(trimmed));
+  return (
+    trimmed.startsWith('<') &&
+    (trimmed.startsWith('<?xml') || /^<\w/.test(trimmed))
+  );
 }
 
 export function formatXml(xml: string): ConversionResult {
@@ -138,7 +159,9 @@ export function formatXml(xml: string): ConversionResult {
       return { success: false, error: 'XML 格式化失败: 格式错误' };
     }
     const result = formatXmlNode(doc.documentElement, 0);
-    const declaration = xml.startsWith('<?xml') ? xml.match(/<\?xml[^?]*\?>/)?.[0] + '\n' : '';
+    const declaration = xml.startsWith('<?xml')
+      ? xml.match(/<\?xml[^?]*\?>/)?.[0] + '\n'
+      : '';
     return { success: true, data: (declaration || '') + result };
   } catch (e) {
     return { success: false, error: `XML 格式化失败: ${(e as Error).message}` };
@@ -165,6 +188,8 @@ function formatXmlNode(node: Element, indent: number): string {
     return `${pad}<${tagName}${attrs}/>`;
   }
 
-  const childXml = children.map((child) => formatXmlNode(child, indent + 1)).join('\n');
+  const childXml = children
+    .map((child) => formatXmlNode(child, indent + 1))
+    .join('\n');
   return `${pad}<${tagName}${attrs}>\n${childXml}\n${pad}</${tagName}>`;
 }

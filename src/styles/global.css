@@ -341,6 +341,26 @@ body {
   font-style: italic;
 }
 
+.tok-bracket {
+  font-weight: bold;
+}
+
+.tok-punct {
+  color: #999;
+}
+
+.tok-xml-tagname {
+  font-weight: 600;
+}
+
+.tok-xml-tag {
+  font-weight: 600;
+}
+
+.tok-xml-tag.tok-tag-close {
+  opacity: 0.85;
+}
+
 .table-view {
   display: flex;
   flex-direction: column;
@@ -636,6 +656,96 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+}
+
+.history-item-hint {
+  font-size: 11px;
+  color: #b8c4ce;
+  margin-top: 4px;
+}
+
+.history-back-btn {
+  padding: 4px 10px;
+  border: 1px solid #d9d9d9;
+  background: white;
+  color: #667eea;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.history-back-btn:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+}
+
+.history-restore-btn {
+  padding: 4px 10px;
+  border: 1px solid #667eea;
+  background: #667eea;
+  color: white;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.history-restore-btn:hover {
+  background: #5568d3;
+  border-color: #5568d3;
+}
+
+.history-detail {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.history-detail-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.history-detail-time {
+  font-size: 11px;
+  color: #999;
+}
+
+.history-detail-section {
+  margin-bottom: 16px;
+}
+
+.history-detail-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.history-detail-code {
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 0;
+  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow: auto;
+  color: #333;
 }
 
 @media (max-width: 768px) {
